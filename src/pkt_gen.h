@@ -17,7 +17,7 @@ typedef char int8;
 #define PCAP_VER_MINOR  0x0004
 #define MAX_LAYERS 20
 #define BUF_LEN 512 
-#define MAX_PAYLOAD_SIZE 500
+#define MAX_PAYLOAD_SIZE 9000
 
 typedef struct packed pcap_hdr_s {
     uint32  magic_number;   /* magic number */
@@ -90,11 +90,19 @@ typedef struct packed tcp_hdr_s {
     uint16  urgent;
 } tcp_hdr_t;
 
+typedef struct packed udp_hdr_s {
+    uint16  src_port;
+    uint16  dst_port;
+    uint16  length;
+    uint16  checksum;
+} udp_hdr_t;
+
 int header_len[] = {
     sizeof(ether_hdr_t),
     sizeof(vlan_hdr_t),
     sizeof(ipv4_hdr_t),
-    sizeof(tcp_hdr_t)
+    sizeof(tcp_hdr_t),
+    sizeof(udp_hdr_t)
 };
 
 typedef enum layer_type_e {

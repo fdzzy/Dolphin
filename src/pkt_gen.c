@@ -4,6 +4,8 @@
 #include <arpa/inet.h>
 #include "pkt_gen.h"
 
+extern void crcInit(void);
+
 /* TODO: CRC is not correct right now */
 uint32 cal_crc32(const char* buf, size_t len)
 {
@@ -411,6 +413,30 @@ int tcp_gen(pkt_t *pkt, int layer)
 
 int udp_gen(pkt_t *pkt, int layer)
 {
+    layer_t *udp;
+    udp_hdr_t *udp_hdr;
+    layer_gen_t *next_list = udp_next_list;
+    int sel;
+
+    udp = malloc(sizeof(layer_t)); 
+    udp->type = LAYER_TYPE_UDP;
+    udp->len = sizeof(udp_hdr_t);
+    udp->buf = malloc(sizeof(udp_hdr_t));
+    
+    udp_hdr = (udp_hdr_t*) udp->buf;
+    //memset(udp_hdr, 0, sizeof(udp_hdr_t));
+    get_port("Destination UDP port: ", &udp_hdr->dst_port);
+    get_port("Source UDP port: ", &udp_hdr->src_port);
+    udp_hdr->src_port = htons(udp_hdr->src_port);
+    udp_hdr->dst_port = htons(udp_hdr->dst_port);
+
+    pkt->layers[layer] = udp;
+    /* Get input from user on which layer goes next */
+    sel = get_layer_list_option(next_list); 
+    /* Construct next layer header */
+    if(next_list[sel].hdr_gen_func(pkt, (layer+1)))
+        return -1;
+
     return 0;
 }
 
@@ -439,6 +465,12 @@ int payload_gen(pkt_t *pkt, int layer)
     payload->type = LAYER_TYPE_PAYLOAD;
     payload->len = size;
     payload->buf = malloc(sizeof(size));
+
+    // set 'length' field in UDP header
+    if(pkt->layers[layer-1]->type == LAYER_TYPE_UDP) {
+        udp_hdr_t *udp_hdr = (udp_hdr_t*)pkt->layers[layer-1]->buf;
+        udp_hdr->length = htons(size + sizeof(udp_hdr_t));
+    }
 
     pkt->layers[layer] = payload;
     /* This is important: Last layer should set packet layer number */
@@ -493,6 +525,7 @@ void cli()
 int main(int argc, char *argv[])
 {
     //printf("%d, %d, %d, %d\n", sizeof(uint64), sizeof(uint32), sizeof(uint16), sizeof(uint8));
+    crcInit();
 
     cli();
 
